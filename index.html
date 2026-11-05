@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simpang-Pro PKJI 2023 — Analisis & Simulasi Simpang Bersinyal</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen antialiased flex flex-col">
+
+  <!-- Header Bar -->
+  <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700/80 sticky top-0 z-30 px-4 py-3 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 flex items-center justify-center shadow-md shadow-emerald-500/20 text-white font-black text-xl">
+          🚦
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-base md:text-lg tracking-tight text-white">SIMPANG-PRO PKJI 2023</h1>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">PKJI 2023 Compliant</span>
+          </div>
+          <p class="text-xs text-slate-400">Analisis Kinerja Simpang Bersinyal, Rekapitulasi SIG, dan Simulasi 2D Interaktif</p>
+        </div>
+      </div>
+
+      <!-- Quick Preset & Main Actions -->
+      <div class="flex items-center flex-wrap gap-2">
+        <label for="presetSelect" class="text-xs text-slate-400 font-medium hidden sm:inline">Preset Skenario:</label>
+        <select id="presetSelect" class="bg-slate-700 border border-slate-600 text-xs text-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          <option value="tipikal">Simpang Tipikal 4 Lengan (Stabil - LOS C)</option>
+          <option value="jenuh">Simpang Beban Tinggi (Kritis - LOS E/F)</option>
+          <option value="lancar">Simpang Arus Sedang (Optimal - LOS B)</option>
+        </select>
+        <button id="btnRecalculate" class="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Hitung Ulang & Terapkan
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI Banner -->
+  <div class="bg-slate-800/40 border-b border-slate-700/60 px-4 py-2.5">
+    <div class="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+      <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Waktu Siklus ($c$)</div>
+        <div class="flex items-baseline gap-1 mt-0.5">
+          <span id="kpiCycle" class="text-lg font-bold text-white font-mono">82</span>
+          <span class="text-xs text-slate-400">detik</span>
+        </div>
+      </div>
+      <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Derajat Kejenuhan Maks ($DJ_{max}$)</div>
+        <div class="flex items-baseline gap-1 mt-0.5">
+          <span id="kpiMaxDS" class="text-lg font-bold text-amber-400 font-mono">0.78</span>
+          <span id="kpiDSBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold">Stabil</span>
+        </div>
+      </div>
+      <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Tundaan Rata-rata Simpang ($T$)</div>
+        <div class="flex items-baseline gap-1 mt-0.5">
+          <span id="kpiDelay" class="text-lg font-bold text-sky-400 font-mono">29.4</span>
+          <span class="text-xs text-slate-400">det/skr</span>
+        </div>
+      </div>
+      <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Tingkat Pelayanan (LOS)</div>
+        <div class="flex items-baseline gap-1.5 mt-0.5">
+          <span id="kpiLOS" class="text-xl font-extrabold text-emerald-400 font-mono">C</span>
+          <span id="kpiLOSDesc" class="text-[11px] text-slate-400">Arus Stabil</span>
+        </div>
+      </div>
+      <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Total Arus Masuk</div>
+        <div class="flex items-baseline gap-1 mt-0.5">
+          <span id="kpiTotalFlow" class="text-lg font-bold text-indigo-300 font-mono">3,420</span>
+          <span class="text-xs text-slate-400">skr/jam</span>
+        </div>
+      </div>
+      <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Panjang Antrian Terpanjang</div>
+        <div class="flex items-baseline gap-1 mt-0.5">
+          <span id="kpiMaxQueue" class="text-lg font-bold text-rose-400 font-mono">54</span>
+          <span class="text-xs text-slate-400">meter</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto w-full p-4 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- Left Column: Top-Down Traffic Simulation View (Canvas) -->
+    <section class="lg:col-span-6 xl:col-span-7 flex flex-col bg-slate-800/60 border border-slate-700 rounded-2xl p-4 shadow-xl">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+          <h2 class="font-bold text-sm text-slate-100 uppercase tracking-wider">Simulasi 2D Tampak Atas (Top-Down Realtime)</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400 font-mono bg-slate-900/60 px-2.5 py-1 rounded-md border border-slate-700" id="simLivePhaseBadge">
+            Fase 1: Utara-Selatan (Hijau)
+          </span>
+        </div>
+      </div>
+
+      <!-- Canvas Wrapper -->
+      <div class="relative w-full aspect-square bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center shadow-inner">
+        <canvas id="trafficCanvas" width="600" height="600" class="w-full h-full block cursor-crosshair"></canvas>
+
+        <!-- Overlay HUD (Timer & Mini Legend) -->
+        <div class="absolute top-3 left-3 bg-slate-900/85 backdrop-blur border border-slate-700 rounded-lg p-2.5 shadow-md pointer-events-none text-xs">
+          <div class="flex items-center gap-2 font-mono">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="hudActivePhaseName" class="text-slate-200 font-medium">Fase U-S</span>
+            <span id="hudPhaseTimer" class="font-bold text-emerald-400 text-sm ml-auto">24s</span>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-1 font-mono">Siklus: <span id="hudCycleProgress">24 / 82</span> detik</div>
+        </div>
+
+        <div class="absolute bottom-3 left-3 bg-slate-900/85 backdrop-blur border border-slate-700 rounded-lg px-2.5 py-1.5 shadow-md pointer-events-none text-[11px] flex gap-3 text-slate-300">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-2 rounded-sm bg-sky-500 inline-block"></span> Mobil (KR)
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-4 h-2 rounded-sm bg-amber-500 inline-block"></span> Bus/Truk (KB)
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-1.5 rounded-sm bg-emerald-400 inline-block"></span> Motor (SM)
+          </div>
+        </div>
+
+        <div class="absolute top-3 right-3 bg-slate-900/85 backdrop-blur border border-slate-700 rounded-lg p-2 shadow-md text-right text-[11px] pointer-events-none">
+          <div class="text-slate-400">Total Kendaraan Aktif:</div>
+          <div id="hudVehCount" class="font-mono font-bold text-slate-100 text-sm">34</div>
+        </div>
+      </div>
+
+      <!-- Simulation Controls -->
+      <div class="mt-3.5 bg-slate-900/70 border border-slate-700/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div class="flex items-center gap-2">
+          <button id="btnPlayPause" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+            <span id="playIcon">⏸️</span>
+            <span id="playLabel">Jeda Simulasi</span>
+          </button>
+          <button id="btnResetSim" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-3 py-1.5 rounded-lg transition">
+            🔄 Reset Kendaraan
+          </button>
+          <button id="btnSpawnBurst" class="bg-indigo-600/80 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg transition" title="Munculkan lonjakan kendaraan untuk tes antrian">
+            ⚡ Lonjakan Antrian
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-slate-400">Kecepatan:</span>
+          <div class="inline-flex rounded-lg border border-slate-700 bg-slate-800 p-0.5" id="speedGroup">
+            <button data-speed="1" class="speed-btn active bg-emerald-600 text-white px-2 py-0.5 rounded text-xs font-mono">1x</button>
+            <button data-speed="2" class="speed-btn text-slate-400 hover:text-white px-2 py-0.5 rounded text-xs font-mono">2x</button>
+            <button data-speed="4" class="speed-btn text-slate-400 hover:text-white px-2 py-0.5 rounded text-xs font-mono">4x</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panduan Lajur Lalu Lintas Indonesia -->
+      <div class="mt-3 text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-700/50 pt-2">
+        <span>Sistem Kemudi Kiri (LHT - Indonesia): Belok kiri langsung/terdekat, belok kanan memotong sumbu simpang.</span>
+        <span class="text-slate-300 font-mono">Skala: 1m ≈ 6px</span>
+      </div>
+    </section>
+
+    <!-- Right Column: Tabs (Input Data, Rekapitulasi PKJI, Evaluasi Kritis) -->
+    <section class="lg:col-span-6 xl:col-span-5 flex flex-col bg-slate-800/60 border border-slate-700 rounded-2xl shadow-xl overflow-hidden">
+      <!-- Tabs Nav -->
+      <div class="flex border-b border-slate-700 bg-slate-800/80 text-xs font-semibold">
+        <button id="tabBtn1" class="tab-btn flex-1 py-3 px-3 text-center border-b-2 border-emerald-500 text-emerald-400 transition" onclick="switchTab(1)">
+          1. Input & Geometri
+        </button>
+        <button id="tabBtn2" class="tab-btn flex-1 py-3 px-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition" onclick="switchTab(2)">
+          2. Rekap PKJI (SIG)
+        </button>
+        <button id="tabBtn3" class="tab-btn flex-1 py-3 px-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition" onclick="switchTab(3)">
+          3. Evaluasi Kritis
+        </button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="p-4 flex-1 overflow-y-auto max-h-[700px]">
+
+        <!-- TAB 1: INPUT DATA & GEOMETRI -->
+        <div id="tabContent1" class="space-y-4">
+          <!-- Parameter Umum Lingkungan -->
+          <div class="bg-slate-900/70 border border-slate-700/80 rounded-xl p-3.5 space-y-3">
+            <h3 class="font-bold text-xs uppercase tracking-wide text-emerald-400 flex items-center gap-1.5">
+              <span>🌐</span> Kondisi Lingkungan & Pengaturan Fase
+            </h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              <div>
+                <label for="inputCitySize" class="block text-slate-400 mb-1">Ukuran Kota ($F_{UK}$)</label>
+                <select id="inputCitySize" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-slate-200 focus:ring-1 focus:ring-emerald-500">
+                  <option value="1.05">&gt; 3,0 Juta Jiwa (1.05)</option>
+                  <option value="1.00" selected>1,0 - 3,0 Juta Jiwa (1.00)</option>
+                  <option value="0.94">0,5 - 1,0 Juta Jiwa (0.94)</option>
+                  <option value="0.88">0,1 - 0,5 Juta Jiwa (0.88)</option>
+                  <option value="0.82">&lt; 0,1 Juta Jiwa (0.82)</option>
+                </select>
+              </div>
+              <div>
+                <label for="inputSideFriction" class="block text-slate-400 mb-1">Hambatan Samping ($F_{HS}$)</label>
+                <select id="inputSideFriction" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-slate-200 focus:ring-1 focus:ring-emerald-500">
+                  <option value="1.00" selected>Rendah (1.00)</option>
+                  <option value="0.94">Sedang (0.94)</option>
+                  <option value="0.88">Tinggi (0.88)</option>
+                </select>
+              </div>
+              <div>
+                <label for="inputPhaseScheme" class="block text-slate-400 mb-1">Skema Fase Sinyal</label>
+                <select id="inputPhaseScheme" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-slate-200 focus:ring-1 focus:ring-emerald-500">
+                  <option value="2" selected>2 Fase (U-S & T-B)</option>
+                  <option value="4">4 Fase (Terpisah per lengan)</option>
+                </select>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-400 bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
+              * Ekivalen Kendaraan Ringan (ekr) PKJI 2023 Simpang Bersinyal: <strong>KR = 1,0</strong>, <strong>KB = 1,3</strong>, <strong>SM = 0,20</strong> (terlindung), <strong>KT = 0,8</strong>.
+            </div>
+          </div>
+
+          <!-- Volume Lengan Simpang (Accordions/Cards) -->
+          <div class="space-y-3">
+            <h3 class="font-bold text-xs uppercase tracking-wide text-slate-300 flex items-center justify-between">
+              <span>🚗 Volume Lalu Lintas per Lengan (kendaraan/jam)</span>
+              <span class="text-[11px] text-slate-400 font-normal">Isi nilai per gerakan</span>
+            </h3>
+
+            <!-- Template 4 Lengan: Utara, Selatan, Timur, Barat -->
+            <div id="armInputsContainer" class="space-y-2.5">
+              <!-- Dynamically populated via JS for U, S, T, B -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: REKAPITULASI PKJI 2023 (TABEL SIG) -->
+        <div id="tabContent2" class="hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-xs uppercase tracking-wide text-emerald-400">
+              Tabel Rekapitulasi Perhitungan PKJI 2023
+            </h3>
+            <button id="btnExportCSV" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1 rounded border border-slate-600 transition flex items-center gap-1">
+              <span>📥</span> Unduh CSV
+            </button>
+          </div>
+
+          <!-- Tabel 1: Analisis Arus & Arus Jenuh (SIG-I & SIG-III) -->
+          <div class="bg-slate-900/80 border border-slate-700 rounded-xl overflow-hidden">
+            <div class="bg-slate-800/80 px-3 py-2 border-b border-slate-700 flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-200">1. Rekap Arus ($Q$) & Arus Jenuh ($S$)</span>
+              <span class="text-[10px] text-slate-400">Form SIG-I & III</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="bg-slate-800/40 text-slate-400 border-b border-slate-700">
+                    <th class="p-2">Lengan</th>
+                    <th class="p-2">$W_A$ (m)</th>
+                    <th class="p-2">Arus (kdr/j)</th>
+                    <th class="p-2">Arus $Q$ (skr/j)</th>
+                    <th class="p-2">$S_0$ (skr/j)</th>
+                    <th class="p-2">$F_{koreksi}$</th>
+                    <th class="p-2">$S$ (skr/j)</th>
+                    <th class="p-2">$FR$ ($Q/S$)</th>
+                  </tr>
+                </thead>
+                <tbody id="tableFlowBody" class="divide-y divide-slate-800 font-mono text-slate-200">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tabel 2: Penetapan Waktu Sinyal & Kapasitas (SIG-IV) -->
+          <div class="bg-slate-900/80 border border-slate-700 rounded-xl overflow-hidden">
+            <div class="bg-slate-800/80 px-3 py-2 border-b border-slate-700 flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-200">2. Waktu Sinyal & Kapasitas ($C$)</span>
+              <span class="text-[10px] text-slate-400">Form SIG-IV</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="bg-slate-800/40 text-slate-400 border-b border-slate-700">
+                    <th class="p-2">Fase</th>
+                    <th class="p-2">Pendekat Kritis</th>
+                    <th class="p-2">$FR_{kritis}$</th>
+                    <th class="p-2">Hijau $g$ (det)</th>
+                    <th class="p-2">Siklus $c$ (det)</th>
+                    <th class="p-2">Rasio $g/c$</th>
+                    <th class="p-2">Kapasitas $C$</th>
+                  </tr>
+                </thead>
+                <tbody id="tableSignalBody" class="divide-y divide-slate-800 font-mono text-slate-200">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tabel 3: Kinerja Pelayanan Simpang (SIG-V) -->
+          <div class="bg-slate-900/80 border border-slate-700 rounded-xl overflow-hidden">
+            <div class="bg-slate-800/80 px-3 py-2 border-b border-slate-700 flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-200">3. Kinerja Simpang: Derajat Kejenuhan, Tundaan, & Antrian</span>
+              <span class="text-[10px] text-slate-400">Form SIG-V</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="bg-slate-800/40 text-slate-400 border-b border-slate-700">
+                    <th class="p-2">Pendekat</th>
+                    <th class="p-2">$DJ$ ($Q/C$)</th>
+                    <th class="p-2">$NQ$ (skr)</th>
+                    <th class="p-2">Antrian (m)</th>
+                    <th class="p-2">$DT$ (det)</th>
+                    <th class="p-2">$DG$ (det)</th>
+                    <th class="p-2">Tundaan (det)</th>
+                    <th class="p-2">LOS</th>
+                  </tr>
+                </thead>
+                <tbody id="tablePerformanceBody" class="divide-y divide-slate-800 font-mono text-slate-200">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: EVALUASI KRITIS & REKOMENDASI TEKNIS -->
+        <div id="tabContent3" class="hidden space-y-4">
+          <div class="bg-slate-900/80 border border-slate-700 rounded-xl p-4 space-y-3">
+            <h3 class="font-bold text-sm text-amber-400 flex items-center gap-2">
+              <span>⚠️</span> Analisis Kritis & Peringatan Ambang Batas PKJI 2023
+            </h3>
+            <div id="criticalAuditContainer" class="space-y-2 text-xs">
+              <!-- Injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Formula & Dasar Hukum -->
+          <div class="bg-slate-900/60 border border-slate-700/70 rounded-xl p-4 text-xs text-slate-300 space-y-2.5">
+            <h4 class="font-bold text-slate-200 uppercase tracking-wide text-[11px]">Kriteria Evaluasi Kritis PKJI 2023</h4>
+            <ul class="list-disc list-inside space-y-1 text-slate-400">
+              <li><strong>Ambang Batas Derajat Kejenuhan ($DJ \le 0,85$):</strong> Nilai $DJ > 0,85$ mengindikasikan arus tidak stabil dengan antrian yang berisiko menjalar ke hulu simpang.</li>
+              <li><strong>Waktu Siklus Praktis:</strong> Waktu siklus disarankan antara 40 s.d. 80 detik untuk 2 fase, dan 80 s.d. 130 detik untuk 4 fase. Waktu siklus &gt; 130 detik meningkatkan tundaan geometrik secara drastis.</li>
+              <li><strong>Waktu Hijau Minimum Pejalan Kaki:</strong> Setiap fase harus menyediakan waktu hijau bersih minimal $g \ge 10 - 15$ detik untuk mengakomodasi penyeberang jalan.</li>
+              <li><strong>Belok Kiri Langsung (LTOR):</strong> Apabila kapasitas simpang kritis, penerapan LTOR disertai lajur pemisah fisik dapat mereduksi beban sinyal hingga 15–25%.</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- Notification Toast Container -->
+  <div id="toast" class="fixed bottom-4 right-4 bg-emerald-600 text-white text-xs px-3.5 py-2 rounded-lg shadow-2xl transition-opacity duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2">
+    <span>✅</span>
+    <span id="toastMsg">Data berhasil diperbarui!</span>
+  </div>
+
+  <script>
+    /* =====================================================================
+       1. STATE MANAGEMENT & DEFAULT DATA (PKJI 2023 STANDARD)
+       ===================================================================== */
+    const PKJI_EKR = { kr: 1.0, kb: 1.3, sm: 0.20, kt: 0.8 };
+
+    // Standard Preset Scenarios
+    const PRESETS = {
+      tipikal: {
+        cityFactor: 1.00,
+        sideFriction: 1.00,
+        phaseScheme: "2",
+        arms: {
+          utara:   { wa: 4.5, wout: 5.0, ltor: false, kr: 420, kb: 35, sm: 1250, kt: 10, pLT: 0.2, pST: 0.6, pRT: 0.2 },
+          selatan: { wa: 4.5, wout: 5.0, ltor: false, kr: 390, kb: 40, sm: 1100, kt: 15, pLT: 0.2, pST: 0.6, pRT: 0.2 },
+          timur:   { wa: 4.0, wout: 4.5, ltor: false, kr: 280, kb: 25, sm: 850,  kt: 5,  pLT: 0.2, pST: 0.6, pRT: 0.2 },
+          barat:   { wa: 4.0, wout: 4.5, ltor: false, kr: 310, kb: 20, sm: 900,  kt: 10, pLT: 0.2, pST: 0.6, pRT: 0.2 }
+        }
+      },
+      jenuh: {
+        cityFactor: 1.05,
+        sideFriction: 0.88, // Hambatan samping tinggi
+        phaseScheme: "2",
+        arms: {
+          utara:   { wa: 4.0, wout: 4.5, ltor: false, kr: 650, kb: 60, sm: 2200, kt: 20, pLT: 0.2, pST: 0.6, pRT: 0.2 },
+          selatan: { wa: 4.0, wout: 4.5, ltor: false, kr: 600, kb: 70, sm: 2100, kt: 25, pLT: 0.2, pST: 0.6, pRT: 0.2 },
+          timur:   { wa: 3.5, wout: 4.0, ltor: false, kr: 450, kb: 40, sm: 1600, kt: 15, pLT: 0.2, pST: 0.6, pRT: 0.2 },
+          barat:   { wa: 3.5, wout: 4.0, ltor: false, kr: 480, kb: 45, sm: 1750, kt: 10, pLT: 0.2, pST: 0.6, pRT: 0.2 }
+        }
+      },
+      lancar: {
+        cityFactor: 0.94,
+        sideFriction: 1.00,
+        phaseScheme: "2",
+        arms: {
+          utara:   { wa: 5.0, wout: 5.5, ltor: true,  kr: 220, kb: 15, sm: 600, kt: 5, pLT: 0.25, pST: 0.55, pRT: 0.2 },
+          selatan: { wa: 5.0, wout: 5.5, ltor: true,  kr: 200, kb: 20, sm: 550, kt: 5, pLT: 0.25, pST: 0.55, pRT: 0.2 },
+          timur:   { wa: 4.5, wout: 5.0, ltor: true,  kr: 150, kb: 10, sm: 400, kt: 0, pLT: 0.25, pST: 0.55, pRT: 0.2 },
+          barat:   { wa: 4.5, wout: 5.0, ltor: true,  kr: 180, kb: 12, sm: 450, kt: 2, pLT: 0.25, pST: 0.55, pRT: 0.2 }
+        }
+      }
+    };
+
+    let appState = JSON.parse(JSON.stringify(PRESETS.tipikal));
+    let calculationResults = null;
+
+    /* =====================================================================
+       2. PKJI 2023 CALCULATION ENGINE
+       ===================================================================== */
+    function runPKJICalculation() {
+      const armKeys = ['utara', 'selatan', 'timur', 'barat'];
+      const f_uk = parseFloat(appState.cityFactor);
+      const f_hs = parseFloat(appState.sideFriction);
+      const scheme = appState.phaseScheme; // "2" or "4"
+
+      const armResults = {};
+      let totalIntersectionFlow = 0;
+
+      armKeys.forEach(arm => {
+        const d = appState.arms[arm];
+        // 1. Total kendaraan dan konversi ke skr/jam
+        const totalKdr = d.kr + d.kb + d.sm + d.kt;
+        const q_skr = Math.round(d.kr * PKJI_EKR.kr + d.kb * PKJI_EKR.kb + d.sm * PKJI_EKR.sm + d.kt * PKJI_EKR.kt);
+        totalIntersectionFlow += q_skr;
+
+        // 2. Arus Jenuh Dasar S0 (PKJI 2023: pendekatan terlindung S0 = 600 x We)
+        const wa = Math.max(2.5, d.wa);
+        const s0 = Math.round(600 * wa);
+
+        // 3. Faktor Penyesuaian
+        // Faktor Belok Kiri (F_LT) & Belok Kanan (F_RT)
+        const f_lt = d.ltor ? 1.00 : (1.00 - 0.16 * d.pLT);
+        const f_rt = 1.00 + 0.18 * d.pRT;
+        const f_tot = f_uk * f_hs * f_lt * f_rt;
+
+        // Arus jenuh terkoreksi
+        const s = Math.round(s0 * f_tot);
+
+        // Rasio Arus (FR = Q / S)
+        const fr = s > 0 ? (q_skr / s) : 0;
+
+        armResults[arm] = {
+          wa: d.wa,
+          wout: d.wout,
+          ltor: d.ltor,
+          totalKdr,
+          q_skr,
+          s0,
+          f_tot: f_tot.toFixed(3),
+          s,
+          fr: parseFloat(fr.toFixed(4)),
+          pLT: d.pLT,
+          pST: d.pST,
+          pRT: d.pRT
+        };
+      });
+
+      // 4. Penetapan Fase & Waktu Sinyal
+      let phases = [];
+      let ifr = 0;
+      let lostTimePerPhase = 5; // 3s Kuning + 2s Merah Semua
+      let totalLostTime = 0;
+
+      if (scheme === "2") {
+        // Fase 1: U & S bersamaan; Fase 2: T & B bersamaan
+        totalLostTime = 2 * lostTimePerPhase;
+        const fr_fase1 = Math.max(armResults.utara.fr, armResults.selatan.fr);
+        const fr_fase2 = Math.max(armResults.timur.fr, armResults.barat.fr);
+        ifr = fr_fase1 + fr_fase2;
+
+        phases = [
+          {
+            id: 1,
+            name: "Fase 1 (Utara & Selatan)",
+            arms: ['utara', 'selatan'],
+            criticalArm: armResults.utara.fr >= armResults.selatan.fr ? 'Utara' : 'Selatan',
+            fr_crit: fr_fase1
+          },
+          {
+            id: 2,
+            name: "Fase 2 (Timur & Barat)",
+            arms: ['timur', 'barat'],
+            criticalArm: armResults.timur.fr >= armResults.barat.fr ? 'Timur' : 'Barat',
+            fr_crit: fr_fase2
+          }
+        ];
+      } else {
+        // 4 Fase mandiri
+        totalLostTime = 4 * lostTimePerPhase;
+        ifr = armResults.utara.fr + armResults.selatan.fr + armResults.timur.fr + armResults.barat.fr;
+        phases = [
+          { id: 1, name: "Fase 1 (Utara)", arms: ['utara'], criticalArm: 'Utara', fr_crit: armResults.utara.fr },
+          { id: 2, name: "Fase 2 (Selatan)", arms: ['selatan'], criticalArm: 'Selatan', fr_crit: armResults.selatan.fr },
+          { id: 3, name: "Fase 3 (Timur)", arms: ['timur'], criticalArm: 'Timur', fr_crit: armResults.timur.fr },
+          { id: 4, name: "Fase 4 (Barat)", arms: ['barat'], criticalArm: 'Barat', fr_crit: armResults.barat.fr }
+        ];
+      }
+
+      // Waktu Siklus Optimum (Webster / PKJI)
+      // c = (1.5 * L + 5) / (1 - IFR)
+      let c_opt = 80;
+      let isOvercapacity = ifr >= 0.95;
+
+      if (!isOvercapacity) {
+        c_opt = Math.round((1.5 * totalLostTime + 5) / (1 - ifr));
+        // Boundary range check (40 - 130 s)
+        c_opt = Math.max(scheme === "2" ? 40 : 60, Math.min(scheme === "2" ? 110 : 140, c_opt));
+      } else {
+        c_opt = 140; // max cap
+      }
+
+      // Alokasi Waktu Hijau Bersih (g_i)
+      const effectiveGreenBudget = c_opt - totalLostTime;
+      phases.forEach(p => {
+        let green = Math.round(effectiveGreenBudget * (p.fr_crit / (ifr > 0 ? ifr : 1)));
+        p.green = Math.max(10, green); // Waktu hijau minimal pejalan kaki
+        p.amber = 3;
+        p.allRed = 2;
+        p.cycle = c_opt;
+        p.greenRatio = parseFloat((p.green / c_opt).toFixed(3));
+      });
+
+      // Sesuaikan total hijau dengan waktu siklus
+      let assignedGreen = phases.reduce((a, b) => a + b.green, 0);
+      let diff = effectiveGreenBudget - assignedGreen;
+      if (diff !== 0 && phases.length > 0) {
+        phases[0].green += diff;
+        phases[0].greenRatio = parseFloat((phases[0].green / c_opt).toFixed(3));
+      }
+
+      // 5. Hitung Kapasitas & Kinerja Tiap Pendekat (DJ, Tundaan, Antrian, LOS)
+      let maxDS = 0;
+      let weightedDelaySum = 0;
+      let maxQueueMeters = 0;
+
+      phases.forEach(p => {
+        p.arms.forEach(arm => {
+          const res = armResults[arm];
+          res.phaseId = p.id;
+          res.green = p.green;
+          res.cycle = c_opt;
+          res.greenRatio = p.greenRatio;
+
+          // Kapasitas C = S * (g / c)
+          res.capacity = Math.round(res.s * res.greenRatio);
+
+          // Derajat Kejenuhan DJ = Q / C
+          res.ds = res.capacity > 0 ? parseFloat((res.q_skr / res.capacity).toFixed(3)) : 1.5;
+          if (res.ds > maxDS) maxDS = res.ds;
+
+          // Jumlah Antrian (NQ)
+          // NQ1 = 0.105 * c * Q/3600 * (1 - g/c)
+          const nq1 = 0.105 * c_opt * (res.q_skr / 3600) * (1 - res.greenRatio);
+          // NQ2 = jika DS > 0.5, rumus penyesuaian PKJI
+          let nq2 = 0;
+          if (res.ds > 0.5) {
+            nq2 = 2 * Math.pow(res.ds, 3.5);
+          }
+          res.nq = parseFloat((nq1 + nq2).toFixed(1));
+
+          // Panjang Antrian Fisik (meter)
+          // PA = NQ * 20 / Wa
+          res.queueLength = Math.round(res.nq * 20 / Math.max(3.0, res.wa));
+          if (res.queueLength > maxQueueMeters) maxQueueMeters = res.queueLength;
+
+          // Tundaan Lalu Lintas (DT) & Geometri (DG)
+          // DT formula PKJI sederhana
+          const term1 = 0.5 * c_opt * Math.pow(1 - res.greenRatio, 2) / (1 - (res.greenRatio * Math.min(0.98, res.ds)));
+          const term2 = res.ds > 0.5 ? (40 * Math.pow(res.ds, 2)) / (Math.max(10, res.capacity) * (1 - Math.min(0.96, res.ds)) + 1) : 0;
+          res.dt = parseFloat((term1 + term2).toFixed(1));
+          res.dg = 4.0; // Tundaan geometri standar
+          res.delay = parseFloat((res.dt + res.dg).toFixed(1));
+
+          // LOS per pendekat
+          res.los = getLOSFromDelay(res.delay, res.ds);
+
+          weightedDelaySum += (res.delay * res.q_skr);
+        });
+      });
+
+      const avgIntersectionDelay = totalIntersectionFlow > 0 ? parseFloat((weightedDelaySum / totalIntersectionFlow).toFixed(1)) : 0;
+      const intersectionLOS = getLOSFromDelay(avgIntersectionDelay, maxDS);
+
+      calculationResults = {
+        cityFactor: f_uk,
+        sideFriction: f_hs,
+        scheme,
+        cycleTime: c_opt,
+        lostTime: totalLostTime,
+        ifr: parseFloat(ifr.toFixed(3)),
+        isOvercapacity,
+        totalFlow: totalIntersectionFlow,
+        maxDS: parseFloat(maxDS.toFixed(2)),
+        avgDelay: avgIntersectionDelay,
+        intersectionLOS,
+        maxQueue: maxQueueMeters,
+        phases,
+        arms: armResults
+      };
+
+      updateKPIDisplay();
+      renderTables();
+      renderCriticalAudit();
+    }
+
+    function getLOSFromDelay(delay, ds) {
+      if (ds > 1.05) return 'F';
+      if (delay <= 10.0) return 'A';
+      if (delay <= 20.0) return 'B';
+      if (delay <= 35.0) return 'C';
+      if (delay <= 55.0) return 'D';
+      if (delay <= 80.0) return 'E';
+      return 'F';
+    }
+
+    function getLOSDescription(los) {
+      switch (los) {
+        case 'A': return 'Kondisi Sangat Baik';
+        case 'B': return 'Arus Lancar Stabil';
+        case 'C': return 'Arus Stabil (Standar)';
+        case 'D': return 'Arus Mendekati Jenuh';
+        case 'E': return 'Kapasitas Kritis / Macet';
+        case 'F': return 'Sangat Macet / Macet Total';
+        default: return '-';
+      }
+    }
+
+    /* =====================================================================
+       3. DOM RENDERING & KPI UPDATE
+       ===================================================================== */
+    function updateKPIDisplay() {
+      const res = calculationResults;
+      if (!res) return;
+
+      document.getElementById('kpiCycle').textContent = res.cycleTime;
+      document.getElementById('kpiMaxDS').textContent = res.maxDS;
+
+      const badge = document.getElementById('kpiDSBadge');
+      if (res.maxDS <= 0.85) {
+        badge.textContent = "Aman (≤ 0.85)";
+        badge.className = "text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold";
+      } else if (res.maxDS <= 1.00) {
+        badge.textContent = "Kritis (0.85 - 1.0)";
+        badge.className = "text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold";
+      } else {
+        badge.textContent = "Lewat Jenuh (> 1.0)";
+        badge.className = "text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-semibold";
+      }
+
+      document.getElementById('kpiDelay').textContent = res.avgDelay;
+      const kpiLOS = document.getElementById('kpiLOS');
+      kpiLOS.textContent = res.intersectionLOS;
+      if (res.intersectionLOS === 'A' || res.intersectionLOS === 'B') {
+        kpiLOS.className = "text-xl font-extrabold text-emerald-400 font-mono";
+      } else if (res.intersectionLOS === 'C' || res.intersectionLOS === 'D') {
+        kpiLOS.className = "text-xl font-extrabold text-amber-400 font-mono";
+      } else {
+        kpiLOS.className = "text-xl font-extrabold text-rose-500 font-mono";
+      }
+
+      document.getElementById('kpiLOSDesc').textContent = getLOSDescription(res.intersectionLOS);
+      document.getElementById('kpiTotalFlow').textContent = res.totalFlow.toLocaleString();
+      document.getElementById('kpiMaxQueue').textContent = res.maxQueue;
+    }
+
+    function renderTables() {
+      const res = calculationResults;
+      if (!res) return;
+
+      const armNames = { utara: 'Utara', selatan: 'Selatan', timur: 'Timur', barat: 'Barat' };
+
+      // 1. Table Flow & Saturation
+      const t1 = document.getElementById('tableFlowBody');
+      t1.innerHTML = Object.keys(res.arms).map(k => {
+        const a = res.arms[k];
+        return `
+          <tr class="hover:bg-slate-800/40">
+            <td class="p-2 font-semibold text-slate-100">${armNames[k]} ${a.ltor ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded">LTOR</span>' : ''}</td>
+            <td class="p-2">${a.wa}</td>
+            <td class="p-2">${a.totalKdr}</td>
+            <td class="p-2 text-indigo-300">${a.q_skr}</td>
+            <td class="p-2 text-slate-400">${a.s0}</td>
+            <td class="p-2 text-slate-400">${a.f_tot}</td>
+            <td class="p-2 text-emerald-300 font-bold">${a.s}</td>
+            <td class="p-2 text-amber-300">${a.fr}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // 2. Table Signal Phasing
+      const t2 = document.getElementById('tableSignalBody');
+      t2.innerHTML = res.phases.map(p => `
+        <tr class="hover:bg-slate-800/40">
+          <td class="p-2 font-semibold text-slate-100">${p.name}</td>
+          <td class="p-2 text-amber-300">${p.criticalArm}</td>
+          <td class="p-2 font-bold">${p.fr_crit}</td>
+          <td class="p-2 text-emerald-400 font-bold">${p.green} s</td>
+          <td class="p-2">${p.cycle} s</td>
+          <td class="p-2">${p.greenRatio}</td>
+          <td class="p-2 text-indigo-300">${p.arms.map(a => `${armNames[a]}: ${res.arms[a].capacity}`).join(' | ')}</td>
+        </tr>
+      `).join('');
+
+      // 3. Table Performance
+      const t3 = document.getElementById('tablePerformanceBody');
+      t3.innerHTML = Object.keys(res.arms).map(k => {
+        const a = res.arms[k];
+        const dsColor = a.ds <= 0.85 ? 'text-emerald-400' : (a.ds <= 1.0 ? 'text-amber-400 font-bold' : 'text-rose-500 font-black');
+        return `
+          <tr class="hover:bg-slate-800/40">
+            <td class="p-2 font-semibold text-slate-100">${armNames[k]}</td>
+            <td class="p-2 ${dsColor}">${a.ds}</td>
+            <td class="p-2">${a.nq}</td>
+            <td class="p-2 text-rose-400">${a.queueLength} m</td>
+            <td class="p-2">${a.dt}</td>
+            <td class="p-2">${a.dg}</td>
+            <td class="p-2 text-sky-400 font-bold">${a.delay}</td>
+            <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${a.los === 'F' ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-700 text-slate-200'}">${a.los}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderCriticalAudit() {
+      const res = calculationResults;
+      const c = document.getElementById('criticalAuditContainer');
+      const alerts = [];
+
+      // Check DJ
+      if (res.maxDS > 0.85) {
+        alerts.push({
+          type: 'danger',
+          title: `Derajat Kejenuhan Melebihi Ambang Batas PKJI ($DJ_{max} = ${res.maxDS}$)`,
+          desc: `Simpang mengalami potensi antrian tidak stabil. Pendekat paling jenuh memerlukan penambahan lebar masuk ($W_A$), pemisahan belok kiri (LTOR), atau optimasi alokasi waktu hijau.`
+        });
+      } else {
+        alerts.push({
+          type: 'success',
+          title: `Derajat Kejenuhan Memenuhi Syarat ($DJ_{max} = ${res.maxDS} \\le 0,85$)`,
+          desc: `Kapasitas simpang mencukupi volume lalu lintas rencana sesuai kriteria Pedoman Kapasitas Jalan Indonesia 2023.`
+        });
+      }
+
+      // Check Cycle Time
+      if (res.cycleTime > 120) {
+        alerts.push({
+          type: 'warning',
+          title: `Waktu Siklus Cukup Panjang (${res.cycleTime} detik)`,
+          desc: `Waktu siklus di atas 120 detik menyebabkan waktu tunggu merah yang lama bagi pengemudi dan pejalan kaki, meningkatkan tundaan total.`
+        });
+      }
+
+      // Check Pedestrian Clearance
+      res.phases.forEach(p => {
+        if (p.green < 14) {
+          alerts.push({
+            type: 'warning',
+            title: `Waktu Hijau ${p.name} Tergolong Pendek (${p.green} detik)`,
+            desc: `Waktu hijau kurang dari 14 detik berpotensi tidak mencukupi waktu penyeberangan pejalan kaki (*pedestrian clearance*).`
+          });
+        }
+      });
+
+      c.innerHTML = alerts.map(a => `
+        <div class="p-3 rounded-lg border ${a.type === 'danger' ? 'bg-rose-500/10 border-rose-500/30 text-rose-200' : (a.type === 'warning' ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200')}">
+          <div class="font-bold flex items-center gap-1.5 mb-1">
+            <span>${a.type === 'danger' ? '🚨' : (a.type === 'warning' ? '⚠️' : '✅')}</span>
+            ${a.title}
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">${a.desc}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderArmInputForms() {
+      const container = document.getElementById('armInputsContainer');
+      const armTitles = { utara: 'Lengan Utara', selatan: 'Lengan Selatan', timur: 'Lengan Timur', barat: 'Lengan Barat' };
+      const armBadges = { utara: 'U (Fase 1)', selatan: 'S (Fase 1)', timur: 'T (Fase 2)', barat: 'B (Fase 2)' };
+
+      container.innerHTML = Object.keys(appState.arms).map(arm => {
+        const d = appState.arms[arm];
+        return `
+          <div class="bg-slate-900/60 border border-slate-700/70 rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-slate-200 text-xs">${armTitles[arm]}</span>
+              <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">${armBadges[arm]}</span>
+            </div>
+
+            <!-- Geometri -->
+            <div class="grid grid-cols-3 gap-2 mb-2 text-xs">
+              <div>
+                <label class="block text-slate-400 text-[11px]">Lebar Masuk $W_A$ (m)</label>
+                <input type="number" step="0.5" min="2.5" max="15" value="${d.wa}"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-100 font-mono"
+                  onchange="updateArmData('${arm}', 'wa', parseFloat(this.value))">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-[11px]">Lebar Keluar $W_{out}$ (m)</label>
+                <input type="number" step="0.5" min="2.5" max="15" value="${d.wout}"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-100 font-mono"
+                  onchange="updateArmData('${arm}', 'wout', parseFloat(this.value))">
+              </div>
+              <div class="flex items-center pt-4">
+                <label class="inline-flex items-center gap-1.5 cursor-pointer text-slate-300 text-[11px]">
+                  <input type="checkbox" ${d.ltor ? 'checked' : ''} class="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0"
+                    onchange="updateArmData('${arm}', 'ltor', this.checked)">
+                  Belok Kiri Langsung (LTOR)
+                </label>
+              </div>
+            </div>
+
+            <!-- Klasifikasi Kendaraan -->
+            <div class="grid grid-cols-4 gap-1.5 text-xs">
+              <div>
+                <label class="block text-slate-400 text-[10px]">KR (Mobil)</label>
+                <input type="number" min="0" value="${d.kr}"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-slate-100 font-mono text-[11px]"
+                  onchange="updateArmData('${arm}', 'kr', parseInt(this.value) || 0)">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-[10px]">KB (Bus/Truk)</label>
+                <input type="number" min="0" value="${d.kb}"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-slate-100 font-mono text-[11px]"
+                  onchange="updateArmData('${arm}', 'kb', parseInt(this.value) || 0)">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-[10px]">SM (Motor)</label>
+                <input type="number" min="0" value="${d.sm}"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-slate-100 font-mono text-[11px]"
+                  onchange="updateArmData('${arm}', 'sm', parseInt(this.value) || 0)">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-[10px]">KT (Tak Bermotor)</label>
+                <input type="number" min="0" value="${d.kt}"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-slate-100 font-mono text-[11px]"
+                  onchange="updateArmData('${arm}', 'kt', parseInt(this.value) || 0)">
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateArmData(arm, field, val) {
+      if (appState.arms[arm]) {
+        appState.arms[arm][field] = val;
+      }
+    }
+
+    function switchTab(num) {
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        if (idx === num - 1) {
+          btn.classList.add('border-emerald-500', 'text-emerald-400');
+          btn.classList.remove('border-transparent', 'text-slate-400');
+        } else {
+          btn.classList.remove('border-emerald-500', 'text-emerald-400');
+          btn.classList.add('border-transparent', 'text-slate-400');
+        }
+      });
+      document.getElementById('tabContent1').classList.toggle('hidden', num !== 1);
+      document.getElementById('tabContent2').classList.toggle('hidden', num !== 2);
+      document.getElementById('tabContent3').classList.toggle('hidden', num !== 3);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2400);
+    }
+
+    /* =====================================================================
+       4. 2D CANVAS TRAFFIC SIMULATION (PHYSICS & SIGNALS)
+       ===================================================================== */
+    const canvas = document.getElementById('trafficCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Simulation variables
+    let isPlaying = true;
+    let simSpeed = 1;
+    let simTime = 0; // seconds
+    let vehicles = [];
+    let vehicleIdCounter = 1;
+    let lastTimestamp = 0;
+
+    // Center coordinates & layout
+    const CX = 300;
+    const CY = 300;
+    const ROAD_W = 140; // Total width of each road
+    const HALF_ROAD = ROAD_W / 2; // 70px
+    const LANE_W = HALF_ROAD / 2; // 35px per lane (2 inbound lanes, 2 outbound lanes)
+
+    // Stop line coordinates
+    // Indonesia: LHT (Left Hand Traffic)
+    // North Inbound: x in [CX - HALF_ROAD, CX], going South (y increases), Stop line y = CY - HALF_ROAD
+    // South Inbound: x in [CX, CX + HALF_ROAD], going North (y decreases), Stop line y = CY + HALF_ROAD
+    // East Inbound: y in [CY - HALF_ROAD, CY], going West (x decreases), Stop line x = CX + HALF_ROAD
+    // West Inbound: y in [CY, CY + HALF_ROAD], going East (x increases), Stop line x = CX - HALF_ROAD
+    const STOP_LINES = {
+      utara: CY - HALF_ROAD,    // 230
+      selatan: CY + HALF_ROAD,  // 370
+      timur: CX + HALF_ROAD,    // 370
+      barat: CX - HALF_ROAD     // 230
+    };
+
+    // Vehicle Class
+    class Vehicle {
+      constructor(type, arm, movement) {
+        this.id = vehicleIdCounter++;
+        this.type = type; // 'KR', 'KB', 'SM'
+        this.arm = arm;   // 'utara', 'selatan', 'timur', 'barat'
+        this.movement = movement; // 'LT', 'ST', 'RT'
+        this.passedIntersection = false;
+        this.isDone = false;
+
+        // Visual attributes based on type
+        if (type === 'KB') {
+          this.width = 13;
+          this.length = 32;
+          this.color = ['#f59e0b', '#d97706', '#3b82f6', '#475569'][Math.floor(Math.random() * 4)];
+          this.maxSpeed = 2.0;
+        } else if (type === 'SM') {
+          this.width = 6;
+          this.length = 12;
+          this.color = ['#10b981', '#06b6d4', '#ec4899', '#e2e8f0'][Math.floor(Math.random() * 4)];
+          this.maxSpeed = 2.8;
+        } else {
+          // KR
+          this.width = 11;
+          this.length = 22;
+          this.color = ['#ef4444', '#3b82f6', '#e2e8f0', '#64748b', '#10b981'][Math.floor(Math.random() * 5)];
+          this.maxSpeed = 2.4;
+        }
+
+        this.speed = this.maxSpeed;
+
+        // Position init according to arm and movement (Indonesian Left-Hand Traffic)
+        // Left lane is for LT + ST; Right lane is for ST + RT.
+        // In Left-hand traffic, left lane is the outermost left lane.
+        this.initPosition();
+      }
+
+      initPosition() {
+        const laneOffset = (this.movement === 'LT') ? (LANE_W * 0.5) : (LANE_W * 1.5);
+        // Motorcycles can pack tighter with slight random lateral jitter
+        const lateralJitter = this.type === 'SM' ? (Math.random() * 8 - 4) : 0;
+
+        switch (this.arm) {
+          case 'utara':
+            // Moves South (+y). Left side of road is x in [CX - HALF_ROAD, CX]
+            // Left lane: x around CX - HALF_ROAD + LANE_W/2 = 300 - 70 + 17.5 = 247.5
+            // Right lane: x around CX - HALF_ROAD + 1.5*LANE_W = 300 - 70 + 52.5 = 282.5
+            this.x = (CX - HALF_ROAD) + laneOffset + lateralJitter;
+            this.y = -40;
+            this.angle = Math.PI / 2; // Facing down (South)
+            break;
+          case 'selatan':
+            // Moves North (-y). Left side of road is x in [CX, CX + HALF_ROAD]
+            // Left lane: x around CX + HALF_ROAD - LANE_W/2 = 300 + 70 - 17.5 = 352.5
+            // Right lane: x around CX + HALF_ROAD - 1.5*LANE_W = 300 + 70 - 52.5 = 317.5
+            this.x = (CX + HALF_ROAD) - laneOffset + lateralJitter;
+            this.y = 640;
+            this.angle = -Math.PI / 2; // Facing up (North)
+            break;
+          case 'timur':
+            // Moves West (-x). Left side of road is y in [CY - HALF_ROAD, CY]
+            // Left lane: y around CY - HALF_ROAD + LANE_W/2 = 300 - 70 + 17.5 = 247.5
+            // Right lane: y around CY - HALF_ROAD + 1.5*LANE_W = 300 - 70 + 52.5 = 282.5
+            this.x = 640;
+            this.y = (CY - HALF_ROAD) + laneOffset + lateralJitter;
+            this.angle = Math.PI; // Facing left (West)
+            break;
+          case 'barat':
+            // Moves East (+x). Left side of road is y in [CY, CY + HALF_ROAD]
+            // Left lane: y around CY + HALF_ROAD - LANE_W/2 = 300 + 70 - 17.5 = 352.5
+            // Right lane: y around CY + HALF_ROAD - 1.5*LANE_W = 300 + 70 - 52.5 = 317.5
+            this.x = -40;
+            this.y = (CY + HALF_ROAD) - laneOffset + lateralJitter;
+            this.angle = 0; // Facing right (East)
+            break;
+        }
+      }
+
+      update(dt, currentSignals) {
+        const signal = currentSignals[this.arm]; // 'GREEN', 'AMBER', 'RED'
+        const isLTOR = calculationResults ? calculationResults.arms[this.arm].ltor : false;
+
+        // 1. Check distance to stop line
+        let distToStopLine = 999;
+        let isBeforeStopLine = false;
+
+        switch (this.arm) {
+          case 'utara':
+            distToStopLine = STOP_LINES.utara - (this.y + this.length / 2);
+            isBeforeStopLine = this.y + this.length / 2 < STOP_LINES.utara;
+            break;
+          case 'selatan':
+            distToStopLine = (this.y - this.length / 2) - STOP_LINES.selatan;
+            isBeforeStopLine = this.y - this.length / 2 > STOP_LINES.selatan;
+            break;
+          case 'timur':
+            distToStopLine = (this.x - this.length / 2) - STOP_LINES.timur;
+            isBeforeStopLine = this.x - this.length / 2 > STOP_LINES.timur;
+            break;
+          case 'barat':
+            distToStopLine = STOP_LINES.barat - (this.x + this.length / 2);
+            isBeforeStopLine = this.x + this.length / 2 < STOP_LINES.barat;
+            break;
+        }
+
+        // 2. Lead vehicle check (Vehicle following)
+        let leadVehicleDist = 999;
+        for (let other of vehicles) {
+          if (other.id === this.id || other.arm !== this.arm || other.passedIntersection) continue;
+          // Check if other is ahead in the same lane
+          let gap = 999;
+          if (this.arm === 'utara' && other.y > this.y && Math.abs(other.x - this.x) < 14) {
+            gap = (other.y - other.length / 2) - (this.y + this.length / 2);
+          } else if (this.arm === 'selatan' && other.y < this.y && Math.abs(other.x - this.x) < 14) {
+            gap = (this.y - this.length / 2) - (other.y + other.length / 2);
+          } else if (this.arm === 'timur' && other.x < this.x && Math.abs(other.y - this.y) < 14) {
+            gap = (this.x - this.length / 2) - (other.x + other.length / 2);
+          } else if (this.arm === 'barat' && other.x > this.x && Math.abs(other.y - this.y) < 14) {
+            gap = (other.x - other.length / 2) - (this.x + this.length / 2);
+          }
+          if (gap > 0 && gap < leadVehicleDist) {
+            leadVehicleDist = gap;
+          }
+        }
+
+        // 3. Determine target speed
+        let targetSpeed = this.maxSpeed;
+        const safeGap = this.type === 'SM' ? 6 : 12;
+
+        if (leadVehicleDist < safeGap + 2) {
+          targetSpeed = 0;
+        } else if (leadVehicleDist < safeGap + 20) {
+          targetSpeed = this.maxSpeed * 0.3;
+        } else if (isBeforeStopLine) {
+          // Approaching stop line
+          const mustStop = (signal === 'RED' && !(this.movement === 'LT' && isLTOR)) ||
+                           (signal === 'AMBER' && distToStopLine > 25);
+          if (mustStop && distToStopLine > 0 && distToStopLine < 45) {
+            targetSpeed = 0;
+          }
+        }
+
+        // Accelerate or decelerate smoothly
+        if (this.speed < targetSpeed) {
+          this.speed = Math.min(targetSpeed, this.speed + 0.15 * dt);
+        } else if (this.speed > targetSpeed) {
+          this.speed = Math.max(targetSpeed, this.speed - 0.25 * dt);
+        }
+
+        // 4. Update Position & Turn paths
+        const moveDist = this.speed * dt;
+
+        // Detect passing intersection stop line
+        if (isBeforeStopLine && distToStopLine <= 0) {
+          this.passedIntersection = true;
+        }
+
+        // Basic kinematics through intersection
+        if (!this.passedIntersection) {
+          // Straight approach before stopline
+          switch (this.arm) {
+            case 'utara': this.y += moveDist; break;
+            case 'selatan': this.y -= moveDist; break;
+            case 'timur': this.x -= moveDist; break;
+            case 'barat': this.x += moveDist; break;
+          }
+        } else {
+          // Inside or exiting intersection
+          if (this.movement === 'ST') {
+            // Straight through
+            switch (this.arm) {
+              case 'utara': this.y += moveDist; break;
+              case 'selatan': this.y -= moveDist; break;
+              case 'timur': this.x -= moveDist; break;
+              case 'barat': this.x += moveDist; break;
+            }
+          } else if (this.movement === 'LT') {
+            // Smooth Left Turn (In Indonesia: left turn is short corner turn)
+            switch (this.arm) {
+              case 'utara':
+                if (this.angle > 0) this.angle -= 0.05 * dt;
+                this.x += Math.cos(this.angle) * moveDist;
+                this.y += Math.sin(this.angle) * moveDist;
+                break;
+              case 'selatan':
+                if (this.angle < -Math.PI / 2 || this.angle > -Math.PI) this.angle -= 0.05 * dt;
+                this.x += Math.cos(this.angle) * moveDist;
+                this.y += Math.sin(this.angle) * moveDist;
+                break;
+              case 'timur':
+                if (this.angle > Math.PI / 2) this.angle -= 0.05 * dt;
+                this.x += Math.cos(this.angle) * moveDist;
+                this.y += Math.sin(this.angle) * moveDist;
+                break;
+              case 'barat':
+                if (this.angle > -Math.PI / 2) this.angle -= 0.05 * dt;
+                this.x += Math.cos(this.angle) * moveDist;
+                this.y += Math.sin(this.angle) * moveDist;
+                break;
+            }
+          } else if (this.movement === 'RT') {
+            // Right Turn (Crosses center)
+            switch (this.arm) {
+              case 'utara':
+                if (this.y > CY - 10 && this.angle < Math.PI) this.angle += 0.04 * dt;
+                this.x += Math.cos(this.angle) * moveDist;
+                this.y += Math.sin(this.angle) * moveDist;
+                break;
+              case 'selatan':
+                if (this.y < CY + 10 && this.angle < 0) this.angle += 0.04 * dt;
+                this.x += Math.cos(this.angle) * moveDist;
+                this.y += Math.sin(this.angle) * moveDist;
+                break;
+              case 'timur':
+                if (this.x < CX + 10 && this.angle < 1.5 * Math.PI) this.angle += 0.04 * dt;
+                this.x += Math.cos(this.angle) * moveDist;
+                this.y += Math.sin(this.angle) * moveDist;
+                break;
+              case 'barat':
+                if (this.x > CX - 10 && this.angle < Math.PI / 2) this.angle += 0.04 * dt;
+                this.x += Math.cos(this.angle) * moveDist;
+                this.y += Math.sin(this.angle) * moveDist;
+                break;
+            }
+          }
+        }
+
+        // Out of screen check
+        if (this.x < -80 || this.x > 680 || this.y < -80 || this.y > 680) {
+          this.isDone = true;
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle - Math.PI / 2);
+
+        // Body
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 4;
+
+        if (this.type === 'KB') {
+          // Bus / Truck
+          ctx.beginPath();
+          ctx.roundRect(-this.width / 2, -this.length / 2, this.width, this.length, 3);
+          ctx.fill();
+
+          // Windshield
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(-this.width / 2 + 1.5, -this.length / 2 + 3, this.width - 3, 5);
+          // Roof details
+          ctx.fillStyle = 'rgba(255,255,255,0.2)';
+          ctx.fillRect(-this.width / 2 + 2, -this.length / 2 + 11, this.width - 4, 15);
+        } else if (this.type === 'SM') {
+          // Motorcycle
+          ctx.beginPath();
+          ctx.roundRect(-this.width / 2, -this.length / 2, this.width, this.length, 2);
+          ctx.fill();
+          // Driver helmet
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath();
+          ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Passenger Car
+          ctx.beginPath();
+          ctx.roundRect(-this.width / 2, -this.length / 2, this.width, this.length, 4);
+          ctx.fill();
+
+          // Windshields front and rear
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(-this.width / 2 + 1.5, -this.length / 2 + 4, this.width - 3, 4);
+          ctx.fillRect(-this.width / 2 + 1.5, this.length / 2 - 6, this.width - 3, 3);
+          // Headlights
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(-this.width / 2 + 1, -this.length / 2, 2.5, 1);
+          ctx.fillRect(this.width / 2 - 3.5, -this.length / 2, 2.5, 1);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    /* =====================================================================
+       5. SIGNAL CONTROLLER & CANVAS RENDERING
+       ===================================================================== */
+    function getCurrentSignalStates() {
+      const res = calculationResults;
+      if (!res) {
+        return { utara: 'GREEN', selatan: 'GREEN', timur: 'RED', barat: 'RED' };
+      }
+
+      const cycle = res.cycleTime;
+      const currentCycleTime = simTime % cycle;
+      const states = { utara: 'RED', selatan: 'RED', timur: 'RED', barat: 'RED' };
+
+      let accumulated = 0;
+      let activePhase = res.phases[0];
+
+      for (let p of res.phases) {
+        const greenEnd = accumulated + p.green;
+        const amberEnd = greenEnd + p.amber;
+        const allRedEnd = amberEnd + p.allRed;
+
+        if (currentCycleTime < allRedEnd) {
+          activePhase = p;
+          let phaseState = 'GREEN';
+          if (currentCycleTime >= amberEnd) {
+            phaseState = 'RED'; // All red
+          } else if (currentCycleTime >= greenEnd) {
+            phaseState = 'AMBER';
+          }
+
+          p.arms.forEach(arm => {
+            states[arm] = phaseState;
+          });
+          break;
+        }
+        accumulated = allRedEnd;
+      }
+
+      // Update HUD
+      const hudTimer = document.getElementById('hudPhaseTimer');
+      const hudPhaseName = document.getElementById('hudActivePhaseName');
+      const hudCycleProgress = document.getElementById('hudCycleProgress');
+      const simLiveBadge = document.getElementById('simLivePhaseBadge');
+
+      const remainingInPhase = Math.max(0, Math.ceil(accumulated + activePhase.green - currentCycleTime));
+      hudTimer.textContent = `${remainingInPhase}s`;
+      hudPhaseName.textContent = activePhase.name;
+      hudCycleProgress.textContent = `${Math.floor(currentCycleTime)} / ${cycle}`;
+      simLiveBadge.textContent = `${activePhase.name} [${states[activePhase.arms[0]]}]`;
+
+      return states;
+    }
+
+    function spawnVehiclesRandomly() {
+      if (!calculationResults) return;
+      const armKeys = ['utara', 'selatan', 'timur', 'barat'];
+
+      armKeys.forEach(arm => {
+        const d = calculationResults.arms[arm];
+        // Spawning probability tied to hourly flow (Q_kdr / 3600)
+        // Scaled to visual comfort
+        const spawnChance = (d.totalKdr / 3600) * 0.7 * simSpeed;
+        if (Math.random() < spawnChance) {
+          // Pick vehicle type
+          const randType = Math.random();
+          let type = 'KR';
+          const pSM = d.totalKdr > 0 ? (appState.arms[arm].sm / d.totalKdr) : 0.5;
+          const pKB = d.totalKdr > 0 ? (appState.arms[arm].kb / d.totalKdr) : 0.1;
+
+          if (randType < pSM) type = 'SM';
+          else if (randType < pSM + pKB) type = 'KB';
+          else type = 'KR';
+
+          // Pick movement (LT, ST, RT)
+          const randM = Math.random();
+          let movement = 'ST';
+          if (randM < d.pLT) movement = 'LT';
+          else if (randM < d.pLT + d.pST) movement = 'ST';
+          else movement = 'RT';
+
+          vehicles.push(new Vehicle(type, arm, movement));
+        }
+      });
+    }
+
+    function drawIntersection() {
+      // 1. Grass / Background
+      ctx.fillStyle = '#0f172a'; // dark theme terrain
+      ctx.fillRect(0, 0, 600, 600);
+
+      // 2. Asphalt Roads (Cross)
+      ctx.fillStyle = '#1e293b';
+      // Vertical Road
+      ctx.fillRect(CX - HALF_ROAD, 0, ROAD_W, 600);
+      // Horizontal Road
+      ctx.fillRect(0, CY - HALF_ROAD, 600, ROAD_W);
+
+      // Curbs & Corner Radius
+      ctx.fillStyle = '#0f172a';
+      const r = 24;
+      // Top-Left corner
+      ctx.beginPath();
+      ctx.moveTo(CX - HALF_ROAD, 0);
+      ctx.lineTo(CX - HALF_ROAD, CY - HALF_ROAD - r);
+      ctx.arcTo(CX - HALF_ROAD, CY - HALF_ROAD, CX - HALF_ROAD - r, CY - HALF_ROAD, r);
+      ctx.lineTo(0, CY - HALF_ROAD);
+      ctx.lineTo(0, 0);
+      ctx.fill();
+
+      // Top-Right corner
+      ctx.beginPath();
+      ctx.moveTo(CX + HALF_ROAD, 0);
+      ctx.lineTo(CX + HALF_ROAD, CY - HALF_ROAD - r);
+      ctx.arcTo(CX + HALF_ROAD, CY - HALF_ROAD, CX + HALF_ROAD + r, CY - HALF_ROAD, r);
+      ctx.lineTo(600, CY - HALF_ROAD);
+      ctx.lineTo(600, 0);
+      ctx.fill();
+
+      // Bottom-Left corner
+      ctx.beginPath();
+      ctx.moveTo(CX - HALF_ROAD, 600);
+      ctx.lineTo(CX - HALF_ROAD, CY + HALF_ROAD + r);
+      ctx.arcTo(CX - HALF_ROAD, CY + HALF_ROAD, CX - HALF_ROAD - r, CY + HALF_ROAD, r);
+      ctx.lineTo(0, CY + HALF_ROAD);
+      ctx.lineTo(0, 600);
+      ctx.fill();
+
+      // Bottom-Right corner
+      ctx.beginPath();
+      ctx.moveTo(CX + HALF_ROAD, 600);
+      ctx.lineTo(CX + HALF_ROAD, CY + HALF_ROAD + r);
+      ctx.arcTo(CX + HALF_ROAD, CY + HALF_ROAD, CX + HALF_ROAD + r, CY + HALF_ROAD, r);
+      ctx.lineTo(600, CY + HALF_ROAD);
+      ctx.lineTo(600, 600);
+      ctx.fill();
+
+      // 3. Marka Jalan (Road Markings)
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+
+      // Road Median (Solid Yellow or White)
+      ctx.strokeStyle = '#eab308';
+      ctx.beginPath();
+      // North & South Median
+      ctx.moveTo(CX, 0); ctx.lineTo(CX, CY - HALF_ROAD - 10);
+      ctx.moveTo(CX, CY + HALF_ROAD + 10); ctx.lineTo(CX, 600);
+      // East & West Median
+      ctx.moveTo(0, CY); ctx.lineTo(CX - HALF_ROAD - 10, CY);
+      ctx.moveTo(CX + HALF_ROAD + 10, CY); ctx.lineTo(600, CY);
+      ctx.stroke();
+
+      // Dashed lane lines (White)
+      ctx.strokeStyle = '#94a3b8';
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      // North lanes
+      ctx.moveTo(CX - LANE_W, 0); ctx.lineTo(CX - LANE_W, CY - HALF_ROAD);
+      ctx.moveTo(CX + LANE_W, 0); ctx.lineTo(CX + LANE_W, CY - HALF_ROAD);
+      // South lanes
+      ctx.moveTo(CX - LANE_W, CY + HALF_ROAD); ctx.lineTo(CX - LANE_W, 600);
+      ctx.moveTo(CX + LANE_W, CY + HALF_ROAD); ctx.lineTo(CX + LANE_W, 600);
+      // East lanes
+      ctx.moveTo(CX + HALF_ROAD, CY - LANE_W); ctx.lineTo(600, CY - LANE_W);
+      ctx.moveTo(CX + HALF_ROAD, CY + LANE_W); ctx.lineTo(600, CY + LANE_W);
+      // West lanes
+      ctx.moveTo(0, CY - LANE_W); ctx.lineTo(CX - HALF_ROAD, CY - LANE_W);
+      ctx.moveTo(0, CY + LANE_W); ctx.lineTo(CX - HALF_ROAD, CY + LANE_W);
+      ctx.stroke();
+      ctx.setLineDash([]); // reset
+
+      // 4. Zebra Crossings & Stop Lines
+      drawZebraCrossings();
+
+      // 5. Draw APILL (Traffic Signal Heads)
+      drawSignalHeads();
+    }
+
+    function drawZebraCrossings() {
+      ctx.fillStyle = '#f8fafc';
+      const stripeW = 4;
+      const stripeH = 14;
+
+      // North Zebra & Stop Line
+      ctx.fillRect(CX - HALF_ROAD, STOP_LINES.utara, HALF_ROAD, 3); // Solid Stop line
+      for (let x = CX - HALF_ROAD + 2; x < CX + HALF_ROAD - 4; x += 8) {
+        ctx.fillRect(x, STOP_LINES.utara - 18, stripeW, stripeH);
+      }
+
+      // South Zebra & Stop Line
+      ctx.fillRect(CX, STOP_LINES.selatan, HALF_ROAD, 3);
+      for (let x = CX - HALF_ROAD + 2; x < CX + HALF_ROAD - 4; x += 8) {
+        ctx.fillRect(x, STOP_LINES.selatan + 4, stripeW, stripeH);
+      }
+
+      // East Zebra & Stop Line
+      ctx.fillRect(STOP_LINES.timur, CY - HALF_ROAD, 3, HALF_ROAD);
+      for (let y = CY - HALF_ROAD + 2; y < CY + HALF_ROAD - 4; y += 8) {
+        ctx.fillRect(STOP_LINES.timur + 4, y, stripeH, stripeW);
+      }
+
+      // West Zebra & Stop Line
+      ctx.fillRect(STOP_LINES.barat, CY, 3, HALF_ROAD);
+      for (let y = CY - HALF_ROAD + 2; y < CY + HALF_ROAD - 4; y += 8) {
+        ctx.fillRect(STOP_LINES.barat - 18, y, stripeH, stripeW);
+      }
+    }
+
+    function drawSignalHeads() {
+      const signals = getCurrentSignalStates();
+
+      // Positions of signal posts
+      const posts = [
+        { arm: 'utara', x: CX - HALF_ROAD - 12, y: STOP_LINES.utara - 10, rot: 0 },
+        { arm: 'selatan', x: CX + HALF_ROAD + 12, y: STOP_LINES.selatan + 10, rot: Math.PI },
+        { arm: 'timur', x: STOP_LINES.timur + 10, y: CY - HALF_ROAD - 12, rot: Math.PI / 2 },
+        { arm: 'barat', x: STOP_LINES.barat - 10, y: CY + HALF_ROAD + 12, rot: -Math.PI / 2 }
+      ];
+
+      posts.forEach(p => {
+        const state = signals[p.arm];
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+
+        // Housing
+        ctx.fillStyle = '#020617';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(-7, -18, 14, 36, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        // 3 Lamps: Red, Amber, Green
+        // Red
+        ctx.fillStyle = state === 'RED' ? '#ef4444' : '#450a0a';
+        ctx.shadowColor = state === 'RED' ? '#ef4444' : 'transparent';
+        ctx.shadowBlur = state === 'RED' ? 10 : 0;
+        ctx.beginPath();
+        ctx.arc(0, -10, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Amber
+        ctx.fillStyle = state === 'AMBER' ? '#f59e0b' : '#451a03';
+        ctx.shadowColor = state === 'AMBER' ? '#f59e0b' : 'transparent';
+        ctx.shadowBlur = state === 'AMBER' ? 10 : 0;
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Green
+        ctx.fillStyle = state === 'GREEN' ? '#10b981' : '#022c22';
+        ctx.shadowColor = state === 'GREEN' ? '#10b981' : 'transparent';
+        ctx.shadowBlur = state === 'GREEN' ? 10 : 0;
+        ctx.beginPath();
+        ctx.arc(0, 10, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      });
+    }
+
+    function simLoop(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const deltaSec = Math.min(0.1, (timestamp - lastTimestamp) / 1000);
+      lastTimestamp = timestamp;
+
+      if (isPlaying) {
+        simTime += deltaSec * simSpeed;
+
+        // Spawn logic
+        spawnVehiclesRandomly();
+
+        // Signal state
+        const currentSignals = getCurrentSignalStates();
+
+        // Update Vehicles
+        for (let i = vehicles.length - 1; i >= 0; i--) {
+          vehicles[i].update(deltaSec * simSpeed * 30, currentSignals);
+          if (vehicles[i].isDone) {
+            vehicles.splice(i, 1);
+          }
+        }
+      }
+
+      // Render Scene
+      drawIntersection();
+
+      // Render Vehicles
+      vehicles.forEach(v => v.draw(ctx));
+
+      // Update vehicle count HUD
+      document.getElementById('hudVehCount').textContent = vehicles.length;
+
+      requestAnimationFrame(simLoop);
+    }
+
+    /* =====================================================================
+       6. INITIALIZATION & EVENT LISTENERS
+       ===================================================================== */
+    function init() {
+      renderArmInputForms();
+      runPKJICalculation();
+
+      // Seed initial vehicles for instant animation
+      for (let i = 0; i < 15; i++) {
+        spawnVehiclesRandomly();
+      }
+
+      // Preset Change
+      document.getElementById('presetSelect').addEventListener('change', e => {
+        const key = e.target.value;
+        if (PRESETS[key]) {
+          appState = JSON.parse(JSON.stringify(PRESETS[key]));
+          document.getElementById('inputCitySize').value = appState.cityFactor;
+          document.getElementById('inputSideFriction').value = appState.sideFriction;
+          document.getElementById('inputPhaseScheme').value = appState.phaseScheme;
+          renderArmInputForms();
+          runPKJICalculation();
+          showToast(`Skenario "${key.toUpperCase()}" berhasil dimuat!`);
+        }
+      });
+
+      // Recalculate Button
+      document.getElementById('btnRecalculate').addEventListener('click', () => {
+        runPKJICalculation();
+        showToast('Kalkulasi PKJI 2023 & Waktu Sinyal berhasil diperbarui!');
+      });
+
+      // Environment Inputs
+      document.getElementById('inputCitySize').addEventListener('change', e => {
+        appState.cityFactor = parseFloat(e.target.value);
+        runPKJICalculation();
+      });
+
+      document.getElementById('inputSideFriction').addEventListener('change', e => {
+        appState.sideFriction = parseFloat(e.target.value);
+        runPKJICalculation();
+      });
+
+      document.getElementById('inputPhaseScheme').addEventListener('change', e => {
+        appState.phaseScheme = e.target.value;
+        renderArmInputForms();
+        runPKJICalculation();
+      });
+
+      // Simulation Controls
+      const btnPlayPause = document.getElementById('btnPlayPause');
+      btnPlayPause.addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        document.getElementById('playIcon').textContent = isPlaying ? '⏸️' : '▶️';
+        document.getElementById('playLabel').textContent = isPlaying ? 'Jeda Simulasi' : 'Jalankan Simulasi';
+      });
+
+      document.getElementById('btnResetSim').addEventListener('click', () => {
+        vehicles = [];
+        simTime = 0;
+        showToast('Antrian kendaraan direset!');
+      });
+
+      document.getElementById('btnSpawnBurst').addEventListener('click', () => {
+        for (let i = 0; i < 16; i++) {
+          spawnVehiclesRandomly();
+        }
+        showToast('Lonjakan kendaraan dimunculkan!');
+      });
+
+      // Speed Buttons
+      const speedBtns = document.querySelectorAll('.speed-btn');
+      speedBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          speedBtns.forEach(b => {
+            b.classList.remove('bg-emerald-600', 'text-white');
+            b.classList.add('text-slate-400');
+          });
+          btn.classList.add('bg-emerald-600', 'text-white');
+          btn.classList.remove('text-slate-400');
+          simSpeed = parseInt(btn.dataset.speed) || 1;
+        });
+      });
+
+      // CSV Export Button
+      document.getElementById('btnExportCSV').addEventListener('click', exportToCSV);
+
+      // Start Simulation Loop
+      requestAnimationFrame(simLoop);
+    }
+
+    function exportToCSV() {
+      if (!calculationResults) return;
+      const res = calculationResults;
+      let csv = "LAPORAN ANALISIS SIMPANG BERSINYAL (PKJI 2023)\n";
+      csv += `Waktu Siklus (detik),${res.cycleTime}\n`;
+      csv += `Derajat Kejenuhan Maksimum,${res.maxDS}\n`;
+      csv += `Tundaan Rata-rata Simpang (detik/skr),${res.avgDelay}\n`;
+      csv += `Tingkat Pelayanan (LOS),${res.intersectionLOS}\n\n`;
+
+      csv += "Lengan,Lebar Masuk (m),Volume (kdr/j),Arus Q (skr/j),Arus Jenuh S (skr/j),Waktu Hijau g (detik),Kapasitas C (skr/j),DJ,Tundaan (detik),Panjang Antrian (m),LOS\n";
+      Object.keys(res.arms).forEach(k => {
+        const a = res.arms[k];
+        csv += `${k.toUpperCase()},${a.wa},${a.totalKdr},${a.q_skr},${a.s},${a.green},${a.capacity},${a.ds},${a.delay},${a.queueLength},${a.los}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'Rekapitulasi_Simpang_PKJI_2023.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('File CSV berhasil diunduh!');
+    }
+
+    // Run on load
+    window.onload = init;
+  </script>
+</body>
+</html>
